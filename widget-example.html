@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Widget standalone (exemplo)</title>
+  <style>
+    /* coloque o mesmo CSS do widget aqui (ou referencie externamente) */
+  </style>
+</head>
+<body>
+  <div id="commentsRoot"></div>
+
+  <script>
+    // Exemplo de dados (gerados pelo admin)
+    const DATA = {
+      lang: "es",
+      comments: [
+        {
+          id:"c1",
+          author:{name:"Silvia García", avatar:""},
+          text:"Sufro de diabetes tipo 2 y la medición constante era una parte molesta de mi rutina.",
+          image:"",
+          reactions:{like:43,love:12,wow:0,sad:1,angry:0},
+          replies:[]
+        }
+      ]
+    };
+  </script>
+
+  <!-- Aqui você inclui o CSS e o JS do widget e chama a função de renderização -->
+  <!-- CSS injetado -->
+  <style>
+  .fb-comments-widget{font-family:Inter,system-ui,Segoe UI,Roboto,Arial;color:#111}
+  .fb-comment{display:flex;gap:12px;padding:12px;border-radius:10px;background:#fff;margin-bottom:10px;align-items:flex-start;box-shadow:0 1px 0 rgba(0,0,0,.03)}
+  .fb-avatar img{width:44px;height:44px;border-radius:50%;object-fit:cover}
+  .fb-comment-main{flex:1}
+  .fb-author{color:#2e6fd8}
+  .fb-comment-body{margin-top:6px;background:#f1f3f5;padding:12px;border-radius:8px;line-height:1.4;color:#111}
+  .fb-comment-image img{max-width:220px;border-radius:6px;margin-top:8px}
+  .fb-comment-actions{margin-top:8px;color:#6b7280;font-size:13px}
+  .fb-replies{margin-left:56px;margin-top:6px}
+  .fb-reply{display:flex;gap:8px;padding:8px;border-radius:8px;background:#fff;margin-bottom:6px;align-items:flex-start;box-shadow:0 1px 0 rgba(0,0,0,.03)}
+  .fb-avatar-small img{width:32px;height:32px;border-radius:50%;object-fit:cover}
+  .reactions-inline .reaction{display:inline-flex;align-items:center;background:#fff;border-radius:20px;padding:4px 8px;margin-left:6px;font-size:12px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  </style>
+
+  <script>
+  // Função de renderização (mesma do admin)
+  function escapeText(t){ return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>'); }
+  function renderReactions(reactions){
+    const arr = [
+      {k:'like',e:'👍'},
+      {k:'love',e:'❤️'},
+      {k:'wow',e:'😮'},
+      {k:'sad',e:'😢'},
+      {k:'angry',e:'😡'}
+    ];
+    return '<div class="reactions-inline">'+arr.map(a=> reactions[a.k] ? `<span class="reaction">${a.e} ${reactions[a.k]}</span>` : '').join('') +'</div>';
+  }
+  function renderCommentsInto(root, commentsData, strings){
+    root.innerHTML = '';
+    commentsData.forEach(c=>{
+      const el = document.createElement('div'); el.className = 'fb-comment';
+      el.innerHTML = `
+        <div class="fb-comment-left"><div class="fb-avatar">${c.author.avatar?'<img src="'+c.author.avatar+'">':''}</div></div>
+        <div class="fb-comment-main">
+          <div class="fb-comment-head"><strong class="fb-author">${escapeText(c.author.name)}</strong></div>
+          <div class="fb-comment-body">${escapeText(c.text)}</div>
+          ${c.image?'<div class="fb-comment-image"><img src="'+c.image+'"></div>':''}
+          <div class="fb-comment-actions">
+            <span class="fb-action">${strings.like}</span> · <span class="fb-action">${strings.reply}</span> · <small class="small">1 ${strings.minutes}</small>
+          </div>
+        </div>
+        <div class="fb-reactions">
+          ${renderReactions(c.reactions)}
+        </div>
+      `;
+      root.appendChild(el);
+      if(c.replies && c.replies.length){
+        const repl = document.createElement('div'); repl.className='fb-replies';
+        c.replies.forEach(r=>{
+          const rEl = document.createElement('div'); rEl.className='fb-reply';
+          rEl.innerHTML = `<div class="fb-avatar-small">${r.author.avatar?'<img src="'+r.author.avatar+'">':''}</div><div><strong>${escapeText(r.author.name)}</strong> ${escapeText(r.text)}</div>`;
+          repl.appendChild(rEl);
+        });
+        root.appendChild(repl);
+      }
+    });
+  }
+
+  const L = {pt:{like:"Curtir",reply:"Responder",minutes:"min"},en:{like:"Like",reply:"Reply",minutes:"min"},es:{like:"Me gusta",reply:"Responder",minutes:"min"}};
+  const root = document.getElementById('commentsRoot');
+  const widget = document.createElement('div'); widget.className='fb-comments-widget';
+  root.appendChild(widget);
+  renderCommentsInto(widget, DATA.comments, L[DATA.lang]||L.en);
+  </script>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin - Gerador de comentários (estilo Facebook)</title>
+  <style>
+    body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:20px;background:#f5f7f9;color:#222}
+    .wrap{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:420px 1fr;gap:16px}
+    .card{background:#fff;border-radius:10px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+    label{display:block;font-size:13px;margin-top:8px}
+    input[type=text],textarea,select{width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;margin-top:6px}
+    textarea{min-height:80px;resize:vertical}
+    .btn{display:inline-block;background:#1877f2;color:#fff;padding:8px 12px;border-radius:6px;border:0;cursor:pointer;margin-top:10px}
+    .btn.secondary{background:#e9eef8;color:#111}
+    .comment-row{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px}
+    .avatar-preview{width:44px;height:44px;border-radius:50%;background:#ccc;overflow:hidden}
+    .avatar-preview img{width:100%;height:100%;object-fit:cover}
+    .small{font-size:13px;color:#666}
+    .preview{padding:12px}
+    .embed-output textarea{width:100%;height:180px}
+    .row{display:flex;gap:8px;align-items:center;margin-top:8px}
+  </style>
+</head>
+<body>
+  <h2>Gerador de sessão de comentários (estilo Facebook)</h2>
+  <div class="wrap">
+    <div class="card">
+      <h3>Criar comentário</h3>
+      <label>Nome
+        <input id="authorName" type="text" value="Silvia García">
+      </label>
+      <label>Avatar (foto) — PNG/JPG (apenas upload local; convertida para base64)
+        <input id="authorAvatar" type="file" accept="image/*">
+      </label>
+      <div class="comment-row">
+        <div class="avatar-preview" id="avatarPreview"></div>
+        <div style="flex:1">
+          <label>Texto do comentário
+            <textarea id="commentText">Sufro de diabetes tipo 2 y la medición constante era una parte molesta de mi rutina.</textarea>
+          </label>
+          <label>Imagem do comentário (opcional)
+            <input id="commentImage" type="file" accept="image/*">
+          </label>
+          <div class="row">
+            <label style="flex:1">Reações (digite números separados por vírgula para: 👍,❤️,😮,😢,😡)
+              <input id="reactionsInput" type="text" placeholder="43,12,0,1,0" value="43,12,0,1,0">
+            </label>
+          </div>
+          <div class="row">
+            <button class="btn" id="addComment">Adicionar comentário</button>
+            <button class="btn secondary" id="clearAll">Limpar tudo</button>
+          </div>
+        </div>
+      </div>
+
+      <hr style="margin-top:12px"/>
+
+      <h3>Idioma</h3>
+      <select id="langSelect">
+        <option value="pt">Português (pt)</option>
+        <option value="en">English (en)</option>
+        <option value="es" selected>Español (es)</option>
+      </select>
+
+      <h3 style="margin-top:12px">Preview & Gerar</h3>
+      <div class="row">
+        <button class="btn" id="generateEmbed">Gerar embed (iframe)</button>
+        <button class="btn" id="generateInline">Gerar snippet inline</button>
+        <button class="btn secondary" id="downloadHtml">Baixar HTML/CSS</button>
+      </div>
+
+      <div style="margin-top:12px" class="embed-output card">
+        <label>Embed / Snippet gerado</label>
+        <textarea id="embedTextarea" readonly></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Preview</h3>
+      <div id="previewArea" class="preview"></div>
+
+      <h4 style="margin-top:12px">Comentários criados</h4>
+      <div id="commentsList" class="small"></div>
+    </div>
+  </div>
+
+  <script>
+    // widget renderer (simplificado) - shared with widget
+    const LANG = {
+      pt: {like: "Curtir", reply: "Responder", minutes: "min"},
+      en: {like:"Like", reply:"Reply", minutes: "min"},
+      es: {like:"Me gusta", reply:"Responder", minutes: "min"}
+    };
+
+    function toBase64(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=e=>res(e.target.result); r.onerror=rej; r.readAsDataURL(file); })}
+
+    let comments = [];
+
+    const avatarInput = document.getElementById('authorAvatar');
+    const avatarPreview = document.getElementById('avatarPreview');
+    let lastAvatar = '';
+
+    avatarInput.addEventListener('change', async e=>{
+      const f = e.target.files[0];
+      if(!f) return;
+      lastAvatar = await toBase64(f);
+      avatarPreview.innerHTML = '<img src="'+lastAvatar+'">';
+    });
+
+    document.getElementById('addComment').addEventListener('click', async ()=>{
+      const name = document.getElementById('authorName').value || 'Anon';
+      const text = document.getElementById('commentText').value || '';
+      const imgFile = document.getElementById('commentImage').files[0];
+      let commentImg = '';
+      if(imgFile) commentImg = await toBase64(imgFile);
+      const reactions = (document.getElementById('reactionsInput').value||'').split(',').map(s=>parseInt(s.trim()||'0'));
+      while(reactions.length<5) reactions.push(0);
+      const comment = {
+        id: Date.now()+Math.random().toString(36).slice(2,8),
+        author: {name, avatar:lastAvatar},
+        text, image:commentImg,
+        reactions: {like:reactions[0]||0,love:reactions[1]||0,wow:reactions[2]||0,sad:reactions[3]||0,angry:reactions[4]||0},
+        replies: []
+      };
+      comments.push(comment);
+      renderPreview();
+      renderCommentsList();
+    });
+
+    document.getElementById('clearAll').addEventListener('click', ()=>{
+      if(!confirm('Remover todos os comentários?')) return;
+      comments = [];
+      renderPreview();
+      renderCommentsList();
+    });
+
+    function renderPreview(){
+      const lang = document.getElementById('langSelect').value;
+      const container = document.getElementById('previewArea');
+      container.innerHTML = '';
+      // inject styles (same used by widget)
+      const style = document.createElement('style');
+      style.textContent = widgetCSS;
+      container.appendChild(style);
+      const widgetRoot = document.createElement('div');
+      widgetRoot.className = 'fb-comments-widget';
+      renderCommentsInto(widgetRoot, comments, LANG[lang]);
+      container.appendChild(widgetRoot);
+    }
+
+    function renderCommentsList(){
+      const el = document.getElementById('commentsList');
+      if(comments.length===0){ el.innerHTML = '<i>Sem comentários</i>'; return; }
+      el.innerHTML = comments.map(c=>`<div style="margin-bottom:8px"><strong>${c.author.name}</strong> — ${c.text.slice(0,120)} <br><small class="small">Reações: ${Object.values(c.reactions).join(', ')}</small></div>`).join('');
+    }
+
+    // embed generation
+    document.getElementById('generateEmbed').addEventListener('click', ()=>{
+      const lang = document.getElementById('langSelect').value;
+      const payload = {comments, lang};
+      const widgetHtml = generateWidgetHTML(payload);
+      const iframe = `<iframe style="width:100%;border:0;min-height:200px" srcdoc="${escapeHtml(widgetHtml)}"></iframe>`;
+      document.getElementById('embedTextarea').value = iframe;
+    });
+
+    document.getElementById('generateInline').addEventListener('click', ()=>{
+      const lang = document.getElementById('langSelect').value;
+      const payload = {comments, lang};
+      const widgetHtml = generateWidgetHTML(payload);
+      // inline snippet that injects into a div with id "my-comments"
+      const snippet = `<!-- Colar onde deseja exibir -->\n<div id="my-comments"></div>\n<script>\nconst widgetSrc = ${JSON.stringify(widgetHtml)};\ndocument.getElementById('my-comments').innerHTML = widgetSrc;\n</script>`;
+      document.getElementById('embedTextarea').value = snippet;
+    });
+
+    document.getElementById('downloadHtml').addEventListener('click', ()=>{
+      const lang = document.getElementById('langSelect').value;
+      const payload = {comments, lang};
+      const widgetHtml = generateWidgetHTML(payload);
+      const blob = new Blob([widgetHtml], {type:'text/html'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download='fb-style-comments.html'; a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // helper to produce the full standalone widget HTML (includes CSS + JS + data)
+    function generateWidgetHTML(data){
+      const inner = `
+<div class="fb-comments-widget"></div>
+<script>
+  const COMMENTS_DATA = ${JSON.stringify(data)};
+</script>
+<style>${widgetCSS}</style>
+<script>${widgetJS}</script>
+<script>renderCommentsInto(document.querySelector('.fb-comments-widget'), COMMENTS_DATA.comments, (function(){ const L={pt:{like:"Curtir",reply:"Responder",minutes:"min"},en:{like:"Like",reply:"Reply",minutes:"min"},es:{like:"Me gusta",reply:"Responder",minutes:"min"}}; return L[COMMENTS_DATA.lang]||L.en})());</script>
+`;
+      return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>${inner}</body></html>`;
+    }
+
+    function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // small renderer used in preview (and also referenced by the embed)
+    function renderCommentsInto(root, commentsData, strings){
+      root.innerHTML = '';
+      commentsData.forEach(c=>{
+        const el = document.createElement('div'); el.className = 'fb-comment';
+        el.innerHTML = `
+          <div class="fb-comment-left"><div class="fb-avatar">${c.author.avatar?'<img src="'+c.author.avatar+'">':'<div style="width:40px;height:40px;border-radius:50%;background:#ccc"></div>'}</div></div>
+          <div class="fb-comment-main">
+            <div class="fb-comment-head"><strong class="fb-author">${escapeText(c.author.name)}</strong></div>
+            <div class="fb-comment-body">${escapeText(c.text)}</div>
+            ${c.image?'<div class="fb-comment-image"><img src="'+c.image+'"></div>':''}
+            <div class="fb-comment-actions">
+              <span class="fb-action">${strings.like}</span> · <span class="fb-action">${strings.reply}</span> · <small class="small">1 ${strings.minutes}</small>
+            </div>
+          </div>
+          <div class="fb-reactions">
+            ${renderReactions(c.reactions)}
+          </div>
+        `;
+        root.appendChild(el);
+        if(c.replies && c.replies.length){
+          const repl = document.createElement('div'); repl.className='fb-replies';
+          c.replies.forEach(r=>{
+            const rEl = document.createElement('div'); rEl.className='fb-reply';
+            rEl.innerHTML = `<div class="fb-avatar-small">${r.author.avatar?'<img src="'+r.author.avatar+'">':''}</div><div><strong>${escapeText(r.author.name)}</strong> ${escapeText(r.text)}</div>`;
+            repl.appendChild(rEl);
+          });
+          root.appendChild(repl);
+        }
+      });
+    }
+
+    function renderReactions(reactions){
+      const arr = [
+        {k:'like',e:'👍'},
+        {k:'love',e:'❤️'},
+        {k:'wow',e:'😮'},
+        {k:'sad',e:'😢'},
+        {k:'angry',e:'😡'}
+      ];
+      return '<div class="reactions-inline">'+arr.map(a=> reactions[a.k] ? `<span class="reaction">${a.e} ${reactions[a.k]}</span>` : '').join('') +'</div>';
+    }
+
+    function escapeText(t){ return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>'); }
+
+    // widget CSS & JS inlined for packaging (kept minimal)
+    const widgetCSS = `
+.fb-comments-widget{font-family:Inter,system-ui,Segoe UI,Roboto,Arial;color:#111}
+.fb-comment{display:flex;gap:12px;padding:12px;border-radius:10px;background:#fff;margin-bottom:10px;align-items:flex-start;box-shadow:0 1px 0 rgba(0,0,0,.03)}
+.fb-avatar img{width:44px;height:44px;border-radius:50%;object-fit:cover}
+.fb-comment-main{flex:1}
+.fb-author{color:#2e6fd8}
+.fb-comment-body{margin-top:6px;background:#f1f3f5;padding:12px;border-radius:8px;line-height:1.4;color:#111}
+.fb-comment-image img{max-width:220px;border-radius:6px;margin-top:8px}
+.fb-comment-actions{margin-top:8px;color:#6b7280;font-size:13px}
+.fb-reactions{display:flex;align-items:center}
+.reactions-inline .reaction{display:inline-flex;align-items:center;background:#fff;border-radius:20px;padding:4px 8px;margin-left:6px;font-size:12px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.fb-replies{margin-left:56px;margin-top:6px}
+.fb-reply{display:flex;gap:8px;padding:8px;border-radius:8px;background:#fff;margin-bottom:6px;align-items:flex-start;box-shadow:0 1px 0 rgba(0,0,0,.03)}
+.fb-avatar-small img{width:32px;height:32px;border-radius:50%;object-fit:cover}
+`;
+
+    const widgetJS = `
+// widget helper functions (renderCommentsInto is provided by host admin to preview)
+// If used standalone, renderCommentsInto is defined here as well.
+${renderCommentsInto.toString()}
+${renderReactions.toString()}
+${escapeText.toString()}
+`.trim();
+
+    // initial preview
+    renderPreview();
+  </script>
+</body>
+</html>

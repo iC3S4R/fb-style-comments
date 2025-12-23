@@ -1,0 +1,107 @@
+: root {
+  --bg:  #f5f7fa;
+  --card: #fff;
+  --muted: #6b7280;
+  --brand: #2e6fd8;
+}
+
+html, body, #__next {
+  height: 100%;
+}
+
+body {
+  font-family: Inter, system-ui, Segoe UI, Roboto, Arial;
+  background:  var(--bg);
+  margin: 0;
+  color: #111;
+  padding: 20px;
+}
+
+. container {
+  max-width:  1100px;
+  margin: 0 auto;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 12px;
+  padding:  14px;
+  box-shadow: 0 2px 10px rgba(10, 10, 10, 0.04);
+  margin-bottom: 16px;
+}
+
+.btn {
+  background: var(--brand);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 0;
+  cursor: pointer;
+}
+
+.btn. secondary {
+  background: #e7eefc;
+  color: #0b2b5a;
+}
+
+.small {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+input[type=text],
+textarea,
+select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #e6e9ee;
+  margin-top: 8px;
+}
+
+. avatar-preview {
+  width: 44px;
+  height: 44px;
+  border-radius:  50%;
+  overflow: hidden;
+  background: #ddd;
+}
+
+.fb-comments-widget {
+  font-family: Inter, system-ui, Segoe UI, Roboto, Arial;
+  color: #111;
+}
+
+. fb-comment {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #fff;
+  margin-bottom: 10px;
+  align-items: flex-start;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, . 03);
+}
+
+.fb-avatar img {
+  width: 44px;
+  height: 44px;
+  border-radius:  50%;
+  object-fit: cover;
+}
+
+.fb-comment-main {
+  flex: 1;
+}
+
+.fb-author {
+  color: var(--brand);
+}
+
+.fb-comment-body {
+  margin-top: 6px;
+  background: #f1f3f5;
+  padding: 12px;
+  border-radius:  8px;
+  line-height: 1.4;
+  color

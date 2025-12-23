@@ -1,0 +1,20 @@
+{
+  "name": "fb-style-comments",
+  "version": "1.0.0",
+  "private": true,
+  "scripts":  {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies":  {
+    "@supabase/supabase-js": "^2.27.0",
+    "next":  "13.4.8",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "swr": "^2.2.0",
+    "nanoid": "^4.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "cookie":  "^0.5.0"
+  }
+}
